@@ -104,10 +104,12 @@ def run_webkit_js_test(port, url_path, js_code, initial_size=(1366, 768), timeou
 def run_responsive_probe(port=8080):
     """
     Prueba F: Verifica las 8 resoluciones de referencia + 2 horizontales móviles
-    directamente sobre la ventana GTK OffscreenWindow real mientras hay juegos abiertos.
+    directamente sobre un WebKit2.WebView en Gtk.Fixed (redimensionado exacto en ancho/alto)
+    + prueba rotación dinámica 390x844 -> 844x390 e interacción táctil DOM real en móvil.
     """
     os.environ["WEBKIT_DISABLE_COMPOSITING_MODE"] = "1"
     import gi
+    import time
     gi.require_version("Gtk", "3.0")
     gi.require_version("WebKit2", "4.1")
     from gi.repository import Gtk, WebKit2, GLib
@@ -126,17 +128,19 @@ def run_responsive_probe(port=8080):
     ]
     games_to_probe = ["pong", "metalslug", "shmup", "donkeykong", "tetris"]
 
+    report = {"resolutions": {}, "mobileDomTouch": None, "orientationPreserve": None, "errors": []}
+    ctx = WebKit2.WebContext.new_ephemeral()
     loop = GLib.MainLoop()
     win = Gtk.OffscreenWindow()
-    win.set_default_size(390, 844)
-    ctx = WebKit2.WebContext.new_ephemeral()
+    win.set_default_size(1920, 1080)
+    fixed = Gtk.Fixed()
     webview = WebKit2.WebView.new_with_context(ctx)
     settings = webview.get_settings()
     settings.set_hardware_acceleration_policy(WebKit2.HardwareAccelerationPolicy.NEVER)
-    win.add(webview)
+    webview.set_size_request(390, 844)
+    fixed.put(webview, 0, 0)
+    win.add(fixed)
     win.show_all()
-
-    report = {"resolutions": {}, "orientationPreserve": None, "errors": []}
 
     def eval_sync(script):
         box = {}
@@ -158,10 +162,24 @@ def run_responsive_probe(port=8080):
         while not done["ok"]:
             Gtk.main_iteration()
 
+    def wait_js(expr, timeout_ms=3000):
+        deadline = time.monotonic() + timeout_ms / 1000.0
+        while time.monotonic() < deadline:
+            if eval_sync(f"Boolean({expr}) ? '1' : '0'") == "1":
+                return True
+            pump(25)
+        return False
+
+    def set_viewport(rw, rh):
+        webview.set_size_request(rw, rh)
+        while Gtk.events_pending():
+            Gtk.main_iteration()
+        pump(120)
+
     def execute():
         try:
-            pump(400)
-            # Install error hooks
+            pump(250)
+            wait_js("document.querySelectorAll('.game-card').length === 17", 3000)
             eval_sync("""
               window.__respErrs = [];
               window.addEventListener('error', e => window.__respErrs.push(String(e.error || e.message)));
@@ -170,19 +188,16 @@ def run_responsive_probe(port=8080):
             """)
 
             for gid in games_to_probe:
+                set_viewport(390, 844)
                 eval_sync(f"document.querySelector('.game-card[data-game-id=\"{gid}\"]').click(); 'clicked';")
-                pump(260)
+                wait_js("document.querySelector('.engine-canvas') && document.querySelector('.game-stage-area .controls-onboarding-banner')", 3000)
+                pump(100)
                 for (rw, rh) in resolutions:
-                    webview.set_size_request(rw, rh)
-                    win.resize(rw, rh)
-                    while Gtk.events_pending():
-                        Gtk.main_iteration()
-                    pump(180)
+                    set_viewport(rw, rh)
                     raw = eval_sync("""
                     (() => {
                       const doc = document.documentElement;
                       const shell = document.querySelector('.game-view-shell');
-                      const vp = document.querySelector('.engine-viewport');
                       const canvas = document.querySelector('.engine-canvas');
                       const bar = document.querySelector('.touch-controls-bar');
                       const barStyle = bar ? getComputedStyle(bar) : null;
@@ -194,10 +209,15 @@ def run_responsive_probe(port=8080):
                         })
                         .map(el => {
                           const r = el.getBoundingClientRect();
+                          let role = 'dir';
+                          if (el.classList.contains('action-pill') || el.classList.contains('fire-pill') || el.classList.contains('jump-pill') || el.classList.contains('full-tap-btn') || el.classList.contains('wide')) role = 'primary';
+                          else if (el.classList.contains('secondary-pill')) role = 'secondary';
+                          else if (el.classList.contains('compact-vert')) role = 'compact';
+                          else if (el.classList.contains('touch-joystick-pad') || el.classList.contains('touch-vertical-track')) role = 'analog';
                           return {
                             cls: el.className,
                             act: el.dataset.act || '',
-                            secondary: el.classList.contains('secondary-pill'),
+                            role,
                             x: r.left, y: r.top, w: r.width, h: r.height,
                             right: r.right, bottom: r.bottom
                           };
@@ -216,30 +236,29 @@ def run_responsive_probe(port=8080):
                       const outOfBounds = touchBtns.filter(b =>
                         b.x < -1 || b.y < -1 || b.right > window.innerWidth + 1 || b.bottom > window.innerHeight + 1
                       );
-                      const primaryBtns = touchBtns.filter(b => !b.secondary);
-                      const secondaryBtns = touchBtns.filter(b => b.secondary);
-                      const minPrimary = primaryBtns.reduce((m, b) => Math.min(m, b.w, b.h), 999);
-                      const minSecondary = secondaryBtns.reduce((m, b) => Math.min(m, b.w, b.h), 999);
+                      const minOf = (roles) => {
+                        const arr = touchBtns.filter(b => roles.includes(b.role));
+                        if (!arr.length) return null;
+                        return Math.round(arr.reduce((m, b) => Math.min(m, b.w, b.h), 999));
+                      };
                       const cRect = canvas ? canvas.getBoundingClientRect() : null;
-                      const vpRect = vp ? vp.getBoundingClientRect() : null;
                       const shellRect = shell ? shell.getBoundingClientRect() : null;
 
                       return JSON.stringify({
                         iw: window.innerWidth,
                         ih: window.innerHeight,
                         sw: doc.scrollWidth,
-                        bodyOverflow: getComputedStyle(document.body).overflow,
                         shellSw: shell ? shell.scrollWidth : 0,
                         shellSh: shell ? shell.scrollHeight : 0,
                         shellW: shellRect ? Math.round(shellRect.width) : 0,
                         shellH: shellRect ? Math.round(shellRect.height) : 0,
                         canvasW: cRect ? Math.round(cRect.width) : 0,
                         canvasH: cRect ? Math.round(cRect.height) : 0,
-                        vpH: vpRect ? Math.round(vpRect.height) : 0,
                         barVisible,
                         btnCount: touchBtns.length,
-                        minPrimary: minPrimary === 999 ? null : Math.round(minPrimary),
-                        minSecondary: minSecondary === 999 ? null : Math.round(minSecondary),
+                        minPrimary: minOf(['primary', 'analog']),
+                        minDir: minOf(['dir']),
+                        minCompactOrSec: minOf(['compact', 'secondary']),
                         overlaps,
                         outOfBoundsCount: outOfBounds.length,
                         outOfBounds
@@ -250,7 +269,7 @@ def run_responsive_probe(port=8080):
                     key = f"{gid}@{rw}x{rh}"
                     issues = []
                     if abs(m["iw"] - rw) > 2 or abs(m["ih"] - rh) > 2:
-                        issues.append(f"viewport did not resize to {rw}x{rh}: got {m['iw']}x{m['ih']}")
+                        issues.append(f"viewport mismatch expected {rw}x{rh}, got {m['iw']}x{m['ih']}")
                     if m["sw"] > m["iw"] + 1 or m["shellSw"] > m["iw"] + 1:
                         issues.append(f"horizontal overflow sw={m['sw']}, shellSw={m['shellSw']} > iw={m['iw']}")
                     if m["shellSh"] > m["ih"] + 2 or m["shellH"] > m["ih"] + 2:
@@ -264,41 +283,114 @@ def run_responsive_probe(port=8080):
                             issues.append(f"touch controls out of viewport: {m['outOfBounds']}")
                         if m["overlaps"]:
                             issues.append(f"touch buttons overlap: {m['overlaps']}")
-                        exp_primary = 40 if (rw <= 350 or rh <= 420) else 48
-                        exp_secondary = 36 if (rw <= 350 or rh <= 420) else 44
-                        if m["minPrimary"] is not None and m["minPrimary"] < exp_primary:
-                            issues.append(f"primary touch target too small min={m['minPrimary']} < {exp_primary}")
-                        if m["minSecondary"] is not None and m["minSecondary"] < exp_secondary:
-                            issues.append(f"secondary touch target too small min={m['minSecondary']} < {exp_secondary}")
+                        compact_vp = (rw <= 350 or rh <= 500)
+                        exp_prim = 46 if compact_vp else 50
+                        exp_dir = 42 if compact_vp else 46
+                        exp_sec = 38 if compact_vp else 44
+                        if m["minPrimary"] is not None and m["minPrimary"] < exp_prim:
+                            issues.append(f"primary touch target small min={m['minPrimary']} < {exp_prim}")
+                        if m["minDir"] is not None and m["minDir"] < exp_dir:
+                            issues.append(f"dir touch target small min={m['minDir']} < {exp_dir}")
+                        if m["minCompactOrSec"] is not None and m["minCompactOrSec"] < exp_sec:
+                            issues.append(f"secondary/compact touch target small min={m['minCompactOrSec']} < {exp_sec}")
                     report["resolutions"][key] = {"metrics": m, "issues": issues}
                     if issues:
                         report["errors"].append(f"{key}: {'; '.join(issues)}")
 
                 eval_sync("document.getElementById('hud-exit-btn').click(); 'exited';")
-                pump(180)
+                wait_js("!document.querySelector('.game-view-shell')", 2000)
 
-            # Orientation switch preservation check (portrait 390x844 -> landscape 844x390)
-            webview.set_size_request(390, 844)
-            win.resize(390, 844)
+            # Prueba táctil DOM real en móvil 390x844 (Pong vertical track + Shmup joystick+fuego simultáneos)
+            set_viewport(390, 844)
+            eval_sync("document.querySelector('.game-card[data-game-id=\"pong\"]').click(); 'open';")
+            wait_js("document.querySelector('.touch-vertical-track') && document.querySelector('.engine-canvas')", 3000)
+            pump(140)
+            pong_touch_ok = eval_sync("""
+            (() => {
+              const canvas = document.querySelector('.engine-canvas');
+              const track = document.querySelector('.touch-vertical-track');
+              const before = canvas.toDataURL();
+              const r = track.getBoundingClientRect();
+              track.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, pointerType: 'touch', buttons: 1, clientX: r.left + r.width/2, clientY: r.top + r.height*0.15, bubbles: true }));
+              track.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, pointerType: 'touch', buttons: 1, clientX: r.left + r.width/2, clientY: r.top + r.height*0.85, bubbles: true }));
+              track.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, pointerType: 'touch', buttons: 0, clientX: r.left + r.width/2, clientY: r.top + r.height*0.85, bubbles: true }));
+              return JSON.stringify({ before });
+            })()
+            """)
+            pump(140)
+            pong_after = eval_sync("document.querySelector('.engine-canvas').toDataURL()")
+            pong_changed = (pong_after != json.loads(pong_touch_ok)["before"])
+            eval_sync("document.getElementById('hud-exit-btn').click(); 'exit';")
+            wait_js("!document.querySelector('.game-view-shell')", 2000)
+
+            eval_sync("document.querySelector('.game-card[data-game-id=\"shmup\"]').click(); 'open';")
+            wait_js("document.querySelector('.touch-joystick-pad') && document.querySelector('.engine-canvas')", 3000)
+            pump(140)
+            shmup_before = eval_sync("""
+            (() => {
+              const canvas = document.querySelector('.engine-canvas');
+              const joy = document.querySelector('.touch-joystick-pad');
+              const fire = document.querySelector('.touch-btn[data-act=\"action\"]');
+              const jr = joy.getBoundingClientRect();
+              const fr = fire.getBoundingClientRect();
+              const before = canvas.toDataURL();
+              joy.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 11, pointerType: 'touch', buttons: 1, clientX: jr.left + jr.width/2, clientY: jr.top + jr.height/2, bubbles: true }));
+              joy.dispatchEvent(new PointerEvent('pointermove', { pointerId: 11, pointerType: 'touch', buttons: 1, clientX: jr.left + jr.width*0.9, clientY: jr.top + jr.height*0.25, bubbles: true }));
+              fire.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 12, pointerType: 'touch', buttons: 1, clientX: fr.left + fr.width/2, clientY: fr.top + fr.height/2, bubbles: true }));
+              return JSON.stringify({ before, firePressed: fire.classList.contains('pressed'), joyActive: joy.classList.contains('active') });
+            })()
+            """)
             pump(160)
+            shmup_after = eval_sync("""
+            (() => {
+              const joy = document.querySelector('.touch-joystick-pad');
+              const fire = document.querySelector('.touch-btn[data-act=\"action\"]');
+              const canvas = document.querySelector('.engine-canvas');
+              const after = canvas.toDataURL();
+              joy.dispatchEvent(new PointerEvent('pointerup', { pointerId: 11, pointerType: 'touch', buttons: 0, bubbles: true }));
+              fire.dispatchEvent(new PointerEvent('pointerup', { pointerId: 12, pointerType: 'touch', buttons: 0, bubbles: true }));
+              return JSON.stringify({ after, releasedClean: !fire.classList.contains('pressed') && !joy.classList.contains('active') });
+            })()
+            """)
+            sb = json.loads(shmup_before)
+            sa = json.loads(shmup_after)
+            eval_sync("document.getElementById('hud-exit-btn').click(); 'exit';")
+            wait_js("!document.querySelector('.game-view-shell')", 2000)
+
+            mobile_ok = (
+                pong_changed
+                and sb["firePressed"]
+                and sb["joyActive"]
+                and sa["releasedClean"]
+                and sa["after"] != sb["before"]
+            )
+            report["mobileDomTouch"] = {
+                "ok": mobile_ok,
+                "pongChanged": pong_changed,
+                "shmupSimultaneous": sb["firePressed"] and sb["joyActive"] and (sa["after"] != sb["before"]),
+                "releasedClean": sa["releasedClean"]
+            }
+            if not mobile_ok:
+                report["errors"].append(f"mobileDomTouch failed: {report['mobileDomTouch']}")
+
+            # Prueba dinámica de cambio de orientación (390x844 -> 844x390 en vivo sin perder partida)
+            set_viewport(390, 844)
             eval_sync("document.querySelector('.game-card[data-game-id=\"pong\"]').click(); 'open-pong';")
-            pump(320)
+            wait_js("document.querySelector('.engine-canvas') && document.querySelector('.game-stage-area .controls-onboarding-banner')", 3000)
+            pump(120)
             eval_sync("window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', code: 'ArrowUp', bubbles: true })); 'in';")
-            pump(80)
+            pump(60)
             before_rot = json.loads(eval_sync("""
               JSON.stringify({
                 title: document.querySelector('.hud-game-title')?.textContent || '',
-                score: document.getElementById('hud-score')?.textContent || '',
                 bannerDismissed: document.querySelector('.controls-onboarding-banner')?.classList.contains('fade-out') || false
               })
             """))
-            webview.set_size_request(844, 390)
-            win.resize(844, 390)
-            pump(200)
+            set_viewport(844, 390)
+            pump(120)
             after_rot = json.loads(eval_sync("""
               JSON.stringify({
                 title: document.querySelector('.hud-game-title')?.textContent || '',
-                score: document.getElementById('hud-score')?.textContent || '',
                 canvasW: Math.round(document.querySelector('.engine-canvas')?.getBoundingClientRect().width || 0),
                 canvasH: Math.round(document.querySelector('.engine-canvas')?.getBoundingClientRect().height || 0),
                 iw: window.innerWidth,
@@ -307,8 +399,6 @@ def run_responsive_probe(port=8080):
               })
             """))
             eval_sync("document.getElementById('hud-exit-btn').click(); 'exited';")
-            pump(120)
-
             ok_rot = (
                 before_rot["title"] == "Hyper Pong"
                 and after_rot["title"] == "Hyper Pong"
@@ -329,14 +419,19 @@ def run_responsive_probe(port=8080):
             loop.quit()
         return False
 
-    def on_load(view, event):
-        if event == WebKit2.LoadEvent.FINISHED:
-            GLib.timeout_add(300, execute)
+    done_flag = {"finished": False}
+    def on_timeout():
+        if not done_flag["finished"]:
+            report["errors"].append("Timeout in run_responsive_probe")
+            loop.quit()
+        return False
 
-    webview.connect("load-changed", on_load)
+    webview.connect("load-changed", lambda v, e: GLib.timeout_add(200, execute) if e == WebKit2.LoadEvent.FINISHED else None)
     webview.load_uri(f"http://localhost:{port}/")
-    GLib.timeout_add_seconds(55, lambda: (report["errors"].append("Timeout"), loop.quit(), False)[-1])
+    tid = GLib.timeout_add_seconds(55, on_timeout)
     loop.run()
+    done_flag["finished"] = True
+    GLib.source_remove(tid) if GLib.main_context_default().find_source_by_id(tid) else None
     win.destroy()
     return report
 
@@ -972,6 +1067,7 @@ def main():
     summary_f = {
         "total_checks": len(res_f["resolutions"]),
         "failed_checks": res_f["errors"],
+        "mobileDomTouch": res_f["mobileDomTouch"],
         "orientationPreserve": res_f["orientationPreserve"],
     }
     print("Resultado F:", json.dumps(summary_f, ensure_ascii=False, indent=2))
