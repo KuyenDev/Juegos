@@ -288,17 +288,25 @@ export default class DonkeyKongGame {
 
   handleInput(evt) {
     const p = this.player;
-    if ((evt.type === 'keydown' || evt.type === 'virtualdown') && (evt.action === 'action' || evt.action === 'up')) {
-      // Si pulsa up frente a una escalera, empieza a trepar; si pulsa action (o up lejos de escalera), salta
-      const ladder = this._findOverlappingLadder(p);
-      if (evt.action === 'up' && ladder && p.hammerTimer <= 0) {
-        p.climbing = true;
-        p.vy = 0;
-        p.x = ladder.x - p.w / 2;
-      } else if (p.grounded && !p.climbing && (evt.action === 'action' || !ladder)) {
-        p.vy = -420;
-        p.grounded = false;
-        this.api.audio.play('jump');
+    if (!p) return;
+    if (evt.type === 'keydown' || evt.type === 'virtualdown') {
+      if (evt.action === 'jump' || evt.action === 'action') {
+        if (p.grounded && !p.climbing) {
+          p.vy = -420;
+          p.grounded = false;
+          this.api.audio.play('jump');
+        }
+      } else if (evt.action === 'up') {
+        const upLadder = this._findOverlappingLadder(p, 'up');
+        if (upLadder && p.hammerTimer <= 0) {
+          p.climbing = true;
+          p.vy = 0;
+          p.x = upLadder.x - p.w / 2;
+        } else if (p.grounded && !p.climbing) {
+          p.vy = -420;
+          p.grounded = false;
+          this.api.audio.play('jump');
+        }
       }
     } else if (evt.type === 'pointerdown' && p.grounded && !p.climbing) {
       p.vy = -420;
@@ -307,12 +315,19 @@ export default class DonkeyKongGame {
     }
   }
 
-  _findOverlappingLadder(p) {
+  _findOverlappingLadder(p, intent = 'any') {
     const cx = p.x + p.w / 2;
     const footY = p.y + p.h;
-    return this.ladders.find(
-      (l) => Math.abs(cx - l.x) < 18 && footY >= l.topY - 8 && footY <= l.botY + 12
-    );
+    return this.ladders.find((l) => {
+      if (Math.abs(cx - l.x) >= 18) return false;
+      if (intent === 'up') {
+        return footY > l.topY + 6 && footY <= l.botY + 12;
+      }
+      if (intent === 'down') {
+        return footY >= l.topY - 8 && footY < l.botY - 8;
+      }
+      return footY >= l.topY - 8 && footY <= l.botY + 12;
+    });
   }
 
   update(dt) {
@@ -327,9 +342,9 @@ export default class DonkeyKongGame {
       if (p.hammerTimer === 0) this._syncHud();
     }
 
-    const ladder = this._findOverlappingLadder(p);
     const upPressed = this.api.input.isPressed('up');
     const downPressed = this.api.input.isPressed('down');
+    const ladder = this._findOverlappingLadder(p, p.climbing ? 'any' : upPressed ? 'up' : downPressed ? 'down' : 'any');
 
     if (p.climbing) {
       if (!ladder) {
@@ -352,14 +367,15 @@ export default class DonkeyKongGame {
       }
     } else {
       const footY = p.y + p.h;
-      if (upPressed && ladder && p.grounded && footY > ladder.topY + 8 && p.hammerTimer <= 0) {
+      if (upPressed && ladder && p.grounded && footY > ladder.topY + 6 && p.hammerTimer <= 0) {
         p.climbing = true;
         p.vy = 0;
         p.x = ladder.x - p.w / 2;
-      } else if (downPressed && ladder && p.grounded && footY < ladder.botY - 12 && p.hammerTimer <= 0) {
+      } else if (downPressed && ladder && p.grounded && footY < ladder.botY - 8 && p.hammerTimer <= 0) {
         p.climbing = true;
+        p.vy = 0;
         p.x = ladder.x - p.w / 2;
-        p.y += 12;
+        p.y += 10;
       }
 
       let mx = 0;

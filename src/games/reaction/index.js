@@ -72,6 +72,7 @@ export default class ReactionTestGame {
 
   handleInput(evt) {
     if (evt.type !== 'pointerdown' && evt.type !== 'keydown' && evt.type !== 'virtualdown') return;
+    if (evt.repeat) return;
     if (evt.type === 'keydown' && evt.action !== 'action') return;
 
     if (this.state === 'waiting' || this.state === 'decoy') {

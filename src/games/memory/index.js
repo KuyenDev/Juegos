@@ -131,6 +131,7 @@ export default class MemoryGame {
       }
     } else if (evt.type === 'keydown' || evt.type === 'virtualdown') {
       const a = evt.action;
+      if (evt.repeat && a === 'action') return;
       if (a === 'left') this.cursor = (this.cursor - 1 + this.cards.length) % this.cards.length;
       else if (a === 'right') this.cursor = (this.cursor + 1) % this.cards.length;
       else if (a === 'up') this.cursor = (this.cursor - this.cols + this.cards.length) % this.cards.length;

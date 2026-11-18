@@ -426,7 +426,7 @@ export default class BombermanGame {
   }
 
   handleInput(evt) {
-    if ((evt.type === 'keydown' || evt.type === 'virtualdown') && evt.action === 'action') {
+    if ((evt.type === 'keydown' || evt.type === 'virtualdown') && !evt.repeat && evt.action === 'action') {
       this._placeBomb();
     }
   }

@@ -327,12 +327,16 @@ export default class MetalSlugGame {
 
   handleInput(evt) {
     if (evt.type === 'keydown' || evt.type === 'virtualdown') {
-      if (evt.action === 'up' && this.player.grounded && !this.api.input.isPressed('down')) {
+      if ((evt.action === 'up' || evt.action === 'jump') && this.player.grounded && !this.api.input.isPressed('down')) {
         this.player.vy = -510;
         this.player.grounded = false;
         this.api.audio.play('jump');
-      } else if (evt.action === 'down' && this.player.grounded && this.player.y + this.player.h < this.groundY - 4) {
-        // Bajar de plataforma elevada con Abajo
+      } else if (
+        (evt.action === 'down' || (evt.action === 'jump' && this.api.input.isPressed('down'))) &&
+        this.player.grounded &&
+        this.player.y + this.player.h < this.groundY - 4
+      ) {
+        // Bajar de plataforma elevada
         this.player.y += 10;
         this.player.grounded = false;
       } else if (evt.action === 'action') {

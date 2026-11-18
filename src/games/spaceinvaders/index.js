@@ -263,13 +263,35 @@ export default class SpaceInvadersGame {
   }
 
   handleInput(evt) {
-    if (evt.type === 'pointermove' || evt.type === 'pointerdown') {
+    if ((evt.type === 'keydown' || evt.type === 'virtualdown') && (evt.action === 'left' || evt.action === 'right')) {
+      this._keyboardLock = true;
+    }
+
+    if (evt.type === 'pointerdown') {
+      this._keyboardLock = false;
       this.player.x = Math.max(
         16,
         Math.min(this.api.width - this.player.w - 16, evt.x * this.api.width - this.player.w / 2)
       );
-      if (evt.type === 'pointerdown') {
-        this._firePlayerWeapon();
+      this._firePlayerWeapon();
+    } else if (evt.type === 'pointermove') {
+      if (evt.isDown) {
+        this._keyboardLock = false;
+        this.player.x = Math.max(
+          16,
+          Math.min(this.api.width - this.player.w - 16, evt.x * this.api.width - this.player.w / 2)
+        );
+      } else if (
+        evt.pointerType === 'mouse' &&
+        evt.insideTarget &&
+        !this._keyboardLock &&
+        !this.api.input.isPressed('left') &&
+        !this.api.input.isPressed('right')
+      ) {
+        this.player.x = Math.max(
+          16,
+          Math.min(this.api.width - this.player.w - 16, evt.x * this.api.width - this.player.w / 2)
+        );
       }
     } else if ((evt.type === 'keydown' || evt.type === 'virtualdown') && evt.action === 'action') {
       this._firePlayerWeapon();
@@ -314,7 +336,7 @@ export default class SpaceInvadersGame {
     }
     this.player.x = Math.max(16, Math.min(w - this.player.w - 16, this.player.x));
 
-    if (this.api.input.isPressed('action')) {
+    if (this.api.input.isPressed('action') || this.api.input.isCanvasDragging?.()) {
       this._firePlayerWeapon();
     }
 

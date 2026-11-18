@@ -86,6 +86,7 @@ export default class PongGame {
   restart() {
     this.lives = 3;
     this.rallyCount = 0;
+    this._keyboardLock = false;
     this.player.y = this.api.height / 2 - this.player.h / 2;
     this.ai.y = this.api.height / 2 - this.ai.h / 2;
     this._setupLevelObstacles(1);
@@ -132,14 +133,55 @@ export default class PongGame {
   }
 
   handleInput(evt) {
-    if ((evt.type === 'keydown' || evt.type === 'virtualdown') && (evt.code === 'KeyM' || evt.action === 'secondary')) {
+    if (
+      (evt.type === 'keydown' || evt.type === 'virtualdown') &&
+      (evt.action === 'mode' || evt.code === 'KeyM' || evt.action === 'secondary')
+    ) {
       this.mode = this.mode === 'duel' ? 'survival' : 'duel';
       this.api.audio.play('click');
       this._syncHud();
+      return;
     }
-    if (evt.type === 'pointermove' || evt.type === 'pointerdown') {
-      const targetY = evt.y * this.api.height - this.player.h / 2;
+
+    if ((evt.type === 'keydown' || evt.type === 'virtualdown') && (evt.action === 'up' || evt.action === 'down')) {
+      this._keyboardLock = true;
+      return;
+    }
+
+    if (evt.type === 'paddletrack') {
+      this._keyboardLock = false;
+      const targetY = evt.y * (this.api.height - this.player.h - 24) + 12;
       this.player.y = Math.max(12, Math.min(this.api.height - this.player.h - 12, targetY));
+      return;
+    }
+
+    if (evt.type === 'pointerdown') {
+      this._keyboardLock = false;
+      if (evt.pointerType === 'touch' && typeof evt.y === 'number') {
+        const targetY = evt.y * this.api.height - this.player.h / 2;
+        this.player.y = Math.max(12, Math.min(this.api.height - this.player.h - 12, targetY));
+      } else if (evt.pointerType === 'mouse' && evt.insideTarget !== false) {
+        const targetY = evt.y * this.api.height - this.player.h / 2;
+        this.player.y = Math.max(12, Math.min(this.api.height - this.player.h - 12, targetY));
+      }
+      return;
+    }
+
+    if (evt.type === 'pointermove') {
+      if (evt.isDown) {
+        this._keyboardLock = false;
+        const targetY = evt.y * this.api.height - this.player.h / 2;
+        this.player.y = Math.max(12, Math.min(this.api.height - this.player.h - 12, targetY));
+      } else if (
+        evt.pointerType === 'mouse' &&
+        evt.insideTarget &&
+        !this._keyboardLock &&
+        !this.api.input.isPressed('up') &&
+        !this.api.input.isPressed('down')
+      ) {
+        const targetY = evt.y * this.api.height - this.player.h / 2;
+        this.player.y = Math.max(12, Math.min(this.api.height - this.player.h - 12, targetY));
+      }
     }
   }
 

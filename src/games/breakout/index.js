@@ -150,13 +150,41 @@ export default class BreakoutGame {
   }
 
   handleInput(evt) {
-    if (evt.type === 'pointermove' || evt.type === 'pointerdown') {
+    if ((evt.type === 'keydown' || evt.type === 'virtualdown') && (evt.action === 'left' || evt.action === 'right')) {
+      this._keyboardLock = true;
+    }
+
+    if (evt.type === 'pointerdown') {
+      this._keyboardLock = false;
       this.paddle.x = Math.max(
         10,
         Math.min(this.api.width - this.paddle.w - 10, evt.x * this.api.width - this.paddle.w / 2)
       );
-      if (evt.type === 'pointerdown') {
+      if (evt.pointerType !== 'touch') {
         this._launchOrFire();
+      }
+    } else if (evt.type === 'pointerup') {
+      if (evt.pointerType === 'touch' && !evt.canceled && (evt.dragDistance || 0) < 14) {
+        this._launchOrFire();
+      }
+    } else if (evt.type === 'pointermove') {
+      if (evt.isDown) {
+        this._keyboardLock = false;
+        this.paddle.x = Math.max(
+          10,
+          Math.min(this.api.width - this.paddle.w - 10, evt.x * this.api.width - this.paddle.w / 2)
+        );
+      } else if (
+        evt.pointerType === 'mouse' &&
+        evt.insideTarget &&
+        !this._keyboardLock &&
+        !this.api.input.isPressed('left') &&
+        !this.api.input.isPressed('right')
+      ) {
+        this.paddle.x = Math.max(
+          10,
+          Math.min(this.api.width - this.paddle.w - 10, evt.x * this.api.width - this.paddle.w / 2)
+        );
       }
     } else if (
       (evt.type === 'keydown' || evt.type === 'virtualdown') &&

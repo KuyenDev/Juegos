@@ -121,7 +121,7 @@ export default class AsteroidsGame {
   }
 
   handleInput(evt) {
-    if (evt.type === 'keydown' || evt.type === 'virtualdown') {
+    if ((evt.type === 'keydown' || evt.type === 'virtualdown') && !evt.repeat) {
       if (evt.action === 'action') {
         this._fireBullet();
       } else if (evt.action === 'secondary' && this.hyperspaceCooldown <= 0) {

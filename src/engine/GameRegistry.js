@@ -70,13 +70,13 @@ const INITIAL_GAMES = [
     accentColor: '#00f5d4',
     orientation: 'square',
     aspectRatio: { width: 640, height: 640 },
-    touchLayout: 'dpad',
+    touchLayout: 'dpad-only',
     baseLevelTarget: 60,
     levelGrowth: 1.22,
     difficultyConfig: { baseSpeed: 7.5, maxSpeedMultiplier: 2.5, growthRate: 0.13 },
     controls: {
       desktop: 'Flechas o WASD para girar · P o Esc para pausar',
-      mobile: 'Desliza el dedo en cualquier dirección o usa la cruceta táctil'
+      mobile: 'Desliza el dedo o usa la cruceta direccional en pantalla'
     },
     svgArt: `<svg viewBox="0 0 240 140" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -114,13 +114,13 @@ const INITIAL_GAMES = [
     accentColor: '#ffbe0b',
     orientation: 'square',
     aspectRatio: { width: 608, height: 608 },
-    touchLayout: 'dpad',
+    touchLayout: 'dpad-only',
     baseLevelTarget: 150,
     levelGrowth: 1.2,
     difficultyConfig: { baseSpeed: 1, maxSpeedMultiplier: 2.1, growthRate: 0.11 },
     controls: {
       desktop: 'Flechas o WASD para cambiar de pasillo',
-      mobile: 'Desliza hacia el pasillo deseado o usa los botones direccionales'
+      mobile: 'Desliza hacia el pasillo o mantén los botones direccionales'
     },
     svgArt: `<svg viewBox="0 0 240 140" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -164,8 +164,8 @@ const INITIAL_GAMES = [
     levelGrowth: 1.25,
     difficultyConfig: { baseSpeed: 1, maxSpeedMultiplier: 2.4, growthRate: 0.13 },
     controls: {
-      desktop: 'Flechas Arriba/Abajo, W/S o mover el ratón · M para cambiar modo',
-      mobile: 'Arrastra el dedo verticalmente en la pantalla o usa Arriba/Abajo'
+      desktop: 'Flechas Arriba/Abajo, W/S o arrastrar con ratón · M para cambiar modo',
+      mobile: 'Desliza verticalmente sobre el escenario, usa el deslizador o ▲/▼'
     },
     svgArt: `<svg viewBox="0 0 240 140" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -336,13 +336,13 @@ const INITIAL_GAMES = [
     accentColor: '#ff9e00',
     orientation: 'portrait',
     aspectRatio: { width: 480, height: 680 },
-    touchLayout: 'tap-only',
+    touchLayout: 'tap-pulse',
     baseLevelTarget: 10,
     levelGrowth: 1.18,
     difficultyConfig: { baseSpeed: 1, maxSpeedMultiplier: 2.15, growthRate: 0.1 },
     controls: {
       desktop: 'Espacio, Flecha Arriba o Clic para impulsar · C para cambiar nave',
-      mobile: 'Toca cualquier parte de la pantalla para impulsar el vuelo'
+      mobile: 'Toca el botón IMPULSAR o la pantalla · ✈ NAVE para cambiar'
     },
     svgArt: `<svg viewBox="0 0 240 140" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
       <defs><linearGradient id="cov-flp-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0b1026"/><stop offset="100%" stop-color="#1b2b55"/></linearGradient></defs>
@@ -418,8 +418,8 @@ const INITIAL_GAMES = [
     levelGrowth: 1,
     difficultyConfig: { baseSpeed: 1, maxSpeedMultiplier: 2, growthRate: 0.1 },
     controls: {
-      desktop: 'Clic izquierdo descubrir · Clic derecho o botón Bandera para marcar mina',
-      mobile: 'Toca para descubrir o activa el conmutador 🚩 en pantalla para poner banderas'
+      desktop: 'Clic izquierdo descubrir · Clic derecho para marcar mina',
+      mobile: 'Toca para descubrir · Mantén pulsado o usa el botón BANDERA para marcar'
     },
     svgArt: `<svg viewBox="0 0 240 140" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
       <rect width="240" height="140" fill="#081020"/>
@@ -494,13 +494,13 @@ const INITIAL_GAMES = [
     accentColor: '#ffbe0b',
     orientation: 'square',
     aspectRatio: { width: 600, height: 640 },
-    touchLayout: 'dpad',
+    touchLayout: 'dpad-undo',
     baseLevelTarget: 250,
     levelGrowth: 1.4,
     difficultyConfig: { baseSpeed: 1, maxSpeedMultiplier: 2, growthRate: 0.1 },
     controls: {
       desktop: 'Flechas o WASD para deslizar · Z para deshacer 1 turno',
-      mobile: 'Desliza el dedo hacia arriba, abajo, izquierda o derecha'
+      mobile: 'Desliza sobre el tablero o usa la cruceta + ↩ DESHACER'
     },
     svgArt: `<svg viewBox="0 0 240 140" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
       <defs><radialGradient id="cov-2048-glow"><stop offset="0%" stop-color="#facc15" stop-opacity="0.55"/><stop offset="100%" stop-color="#facc15" stop-opacity="0"/></radialGradient></defs>
@@ -530,13 +530,13 @@ const INITIAL_GAMES = [
     accentColor: '#00ff88',
     orientation: 'landscape',
     aspectRatio: { width: 720, height: 520 },
-    touchLayout: 'tap-only',
+    touchLayout: 'board',
     baseLevelTarget: 120,
     levelGrowth: 1.2,
     difficultyConfig: { baseSpeed: 1, maxSpeedMultiplier: 2.4, growthRate: 0.14 },
     controls: {
-      desktop: 'Clic o barra espaciadora en el instante en que aparezca la señal verde',
-      mobile: 'Toca la pantalla o el objetivo luminoso lo más rápido posible'
+      desktop: 'Clic sobre el reactor o barra espaciadora al ponerse verde',
+      mobile: 'Toca directamente el reactor luminoso cuando cambie a VERDE'
     },
     svgArt: `<svg viewBox="0 0 240 140" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
       <defs><radialGradient id="cov-rea-glow"><stop offset="0%" stop-color="#00ff88" stop-opacity="0.6"/><stop offset="100%" stop-color="#00ff88" stop-opacity="0"/></radialGradient></defs>
@@ -570,7 +570,7 @@ const INITIAL_GAMES = [
     difficultyConfig: { baseSpeed: 1, maxSpeedMultiplier: 2.3, growthRate: 0.12 },
     controls: {
       desktop: 'Flechas o WASD para mover · Espacio para colocar bomba',
-      mobile: 'Cruceta táctil para desplazarte y botón ACCIÓN para colocar bomba'
+      mobile: 'Cruceta táctil para desplazarte y botón 💣 BOMBA a la derecha'
     },
     svgArt: `<svg viewBox="0 0 240 140" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
       <rect width="240" height="140" fill="#0b1326"/>
@@ -604,14 +604,14 @@ const INITIAL_GAMES = [
     accentColor: '#00bbf9',
     orientation: 'portrait',
     aspectRatio: { width: 520, height: 700 },
-    touchLayout: 'dpad-dual',
+    touchLayout: 'joystick-dual',
     musicTrack: 'shmup',
     baseLevelTarget: 220,
     levelGrowth: 1.3,
     difficultyConfig: { baseSpeed: 1, maxSpeedMultiplier: 2.4, growthRate: 0.13 },
     controls: {
       desktop: 'Flechas/WASD o ratón · Espacio dispara · Shift/C Bomba Nova',
-      mobile: 'Arrastra la nave o usa cruceta + DISPARO / ESP (Bomba Nova)'
+      mobile: 'Joystick izquierdo o arrastre · Botones FUEGO y ⚡ NOVA simultáneos'
     },
     svgArt: `<svg viewBox="0 0 240 140" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -649,14 +649,14 @@ const INITIAL_GAMES = [
     accentColor: '#00ff88',
     orientation: 'landscape',
     aspectRatio: { width: 800, height: 500 },
-    touchLayout: 'dpad-dual',
+    touchLayout: 'platform-action',
     musicTrack: 'metalslug',
     baseLevelTarget: 350,
     levelGrowth: 1.3,
     difficultyConfig: { baseSpeed: 1, maxSpeedMultiplier: 2.35, growthRate: 0.12 },
     controls: {
       desktop: 'A/D mover · W/Arriba saltar o apuntar · S agachar · Espacio disparo · C/Shift granada',
-      mobile: 'Cruceta táctil + DISPARO y ESP (lanzar granada)'
+      mobile: 'Cruceta táctil izquierda + SALTAR, DISPARO y GRANADA simultáneos'
     },
     svgArt: `<svg viewBox="0 0 240 140" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
       <defs><linearGradient id="cov-ms-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0f172a"/><stop offset="100%" stop-color="#7c2d12"/></linearGradient></defs>
@@ -695,14 +695,14 @@ const INITIAL_GAMES = [
     accentColor: '#ff2a85',
     orientation: 'landscape',
     aspectRatio: { width: 800, height: 500 },
-    touchLayout: 'dpad-dual',
+    touchLayout: 'platform-action',
     musicTrack: 'sunsetriders',
     baseLevelTarget: 350,
     levelGrowth: 1.3,
     difficultyConfig: { baseSpeed: 1, maxSpeedMultiplier: 2.35, growthRate: 0.12 },
     controls: {
       desktop: 'A/D mover · W/Arriba saltar · S/Shift barrida esquiva · Espacio disparar',
-      mobile: 'Cruceta táctil + DISPARO y ESP (barrida esquiva)'
+      mobile: 'Cruceta táctil izquierda + SALTAR, DISPARO y BARRER simultáneos'
     },
     svgArt: `<svg viewBox="0 0 240 140" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
       <defs><linearGradient id="cov-sr-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1e0b36"/><stop offset="55%" stop-color="#9d174d"/><stop offset="100%" stop-color="#fbbf24"/></linearGradient></defs>
@@ -738,14 +738,14 @@ const INITIAL_GAMES = [
     accentColor: '#ffbe0b',
     orientation: 'portrait',
     aspectRatio: { width: 560, height: 680 },
-    touchLayout: 'dpad-dual',
+    touchLayout: 'platform-climb',
     musicTrack: 'donkeykong',
     baseLevelTarget: 250,
     levelGrowth: 1.25,
     difficultyConfig: { baseSpeed: 1, maxSpeedMultiplier: 2.2, growthRate: 0.12 },
     controls: {
       desktop: 'Izq/Der correr · Arriba/Abajo escaleras · Espacio saltar barriles',
-      mobile: 'Cruceta para moverte/trepar y botón DISPARO/ACCIÓN para saltar'
+      mobile: 'Cruceta para moverte/trepar escaleras + botón SALTAR barriles'
     },
     svgArt: `<svg viewBox="0 0 240 140" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
       <rect width="240" height="140" fill="#090714"/>

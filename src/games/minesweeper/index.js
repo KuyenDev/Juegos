@@ -127,6 +127,22 @@ export default class MinesweeperGame {
   }
 
   handleInput(evt) {
+    if (evt.type === 'pointermove' && evt.isDown && this._pendingTouch) {
+      if (Math.hypot(evt.deltaX || 0, evt.deltaY || 0) > 14) {
+        this._pendingTouch = null;
+      }
+      return;
+    }
+
+    if (evt.type === 'pointerup' && this._pendingTouch) {
+      const pending = this._pendingTouch;
+      this._pendingTouch = null;
+      if (!evt.canceled && !pending.flaggedDone && (evt.dragDistance || 0) < 14) {
+        this._applyTileAction(pending.row, pending.col, this.flagMode);
+      }
+      return;
+    }
+
     if (evt.type !== 'pointerdown') return;
 
     const px = evt.x * this.api.width;
@@ -153,8 +169,18 @@ export default class MinesweeperGame {
 
     if (row < 0 || row >= this.rows || col < 0 || col >= this.cols) return;
 
+    if (evt.pointerType === 'touch') {
+      // Pulsar prolongado (>= 0.36s) en móvil coloca bandera; toque breve descubre
+      this._pendingTouch = { row, col, elapsed: 0, flaggedDone: false };
+      return;
+    }
+
     const isRightClick = evt.button === 2 || this.flagMode;
-    if (isRightClick) {
+    this._applyTileAction(row, col, isRightClick);
+  }
+
+  _applyTileAction(row, col, isFlagAction) {
+    if (isFlagAction) {
       this._toggleFlag(row, col);
     } else if (this.cells[row][col].revealed && this.cells[row][col].neighbors > 0) {
       this._chordReveal(row, col);
@@ -252,6 +278,13 @@ export default class MinesweeperGame {
 
   update(dt = 0) {
     this.animTime += dt;
+    if (this._pendingTouch && !this._pendingTouch.flaggedDone) {
+      this._pendingTouch.elapsed += dt;
+      if (this._pendingTouch.elapsed >= 0.36) {
+        this._pendingTouch.flaggedDone = true;
+        this._toggleFlag(this._pendingTouch.row, this._pendingTouch.col);
+      }
+    }
   }
 
   render(ctx) {

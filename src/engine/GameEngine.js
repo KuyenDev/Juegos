@@ -103,22 +103,36 @@ export class GameEngine {
       }
     });
 
-    this.input = new InputManager(this.viewportWrapper, (evt) => {
-      if (evt.type === 'keydown' && !evt.repeat) {
-        if (evt.action === 'pause') {
-          this.togglePause();
-          return;
+    this.input = new InputManager(
+      this.viewportWrapper,
+      (evt) => {
+        if (evt.type === 'keydown' && !evt.repeat) {
+          if (evt.action === 'pause') {
+            this.togglePause();
+            return;
+          }
+          if (evt.action === 'restart' && this.isGameOver) {
+            this.restart();
+            return;
+          }
         }
-        if (evt.action === 'restart' && this.isGameOver) {
-          this.restart();
-          return;
+        if (this.isPaused || this.isGameOver) return;
+        if (this.hudCallbacks.onFirstInput) {
+          this.hudCallbacks.onFirstInput(evt);
+        }
+        if (this.gameInstance && typeof this.gameInstance.handleInput === 'function') {
+          this.gameInstance.handleInput(evt);
+        }
+      },
+      {
+        isInteractiveActive: () => !this.isPaused && !this.isGameOver,
+        onClear: () => {
+          if (this.hudCallbacks.onInputClear) {
+            this.hudCallbacks.onInputClear();
+          }
         }
       }
-      if (this.isPaused || this.isGameOver) return;
-      if (this.gameInstance && typeof this.gameInstance.handleInput === 'function') {
-        this.gameInstance.handleInput(evt);
-      }
-    });
+    );
 
     // Instanciar módulo del juego
     const GameClass = await gameMeta.loadModule();
@@ -221,6 +235,7 @@ export class GameEngine {
     }
     this._windowResizeListener = () => this._fitViewport();
     window.addEventListener('resize', this._windowResizeListener);
+    window.addEventListener('orientationchange', this._windowResizeListener);
   }
 
   _fitViewport() {
@@ -228,8 +243,8 @@ export class GameEngine {
     const rect = this.stageElement.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
 
-    const availW = Math.max(240, rect.width - 12);
-    const availH = Math.max(220, rect.height - 12);
+    const availW = Math.max(120, rect.width - 8);
+    const availH = Math.max(120, rect.height - 8);
     const targetRatio = this.logicalWidth / this.logicalHeight;
     const currentRatio = availW / availH;
 
@@ -254,6 +269,7 @@ export class GameEngine {
   pause() {
     if (this.isGameOver || this.isPaused) return;
     this.isPaused = true;
+    this.input?.clearAll();
     AudioManager.pauseMusic();
     if (this.loop) this.loop.pause();
     if (this.gameInstance && typeof this.gameInstance.pause === 'function') {
@@ -267,6 +283,7 @@ export class GameEngine {
   resume() {
     if (this.isGameOver || !this.isPaused) return;
     this.isPaused = false;
+    this.input?.clearAll();
     AudioManager.resumeMusic();
     if (this.loop) this.loop.resume();
     if (this.gameInstance && typeof this.gameInstance.resume === 'function') {
@@ -289,6 +306,7 @@ export class GameEngine {
     if (!this.gameInstance) return;
     this.isGameOver = false;
     this.isPaused = false;
+    this.input?.clearAll();
     this.sessionStartTime = performance.now();
     this.scoreManager.reset(this.scoreManager.highScore);
     this.levelManager.reset();
@@ -320,6 +338,7 @@ export class GameEngine {
   async handleGameOver(options = {}) {
     if (this.isGameOver) return;
     this.isGameOver = true;
+    this.input?.clearAll();
     if (this.loop) {
       this.loop.pause();
     }
@@ -367,6 +386,7 @@ export class GameEngine {
     }
     if (this._windowResizeListener) {
       window.removeEventListener('resize', this._windowResizeListener);
+      window.removeEventListener('orientationchange', this._windowResizeListener);
       this._windowResizeListener = null;
     }
     if (this._visibilityHandler) {

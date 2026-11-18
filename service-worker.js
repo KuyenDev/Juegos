@@ -1,4 +1,4 @@
-const CACHE_NAME = 'arcade-infinito-v1.2.0';
+const CACHE_NAME = 'arcade-infinito-v1.3.0';
 
 const PRECACHE_ASSETS = [
   './',

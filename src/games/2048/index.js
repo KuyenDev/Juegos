@@ -80,6 +80,7 @@ export default class Cyber2048Game {
     }
 
     if (evt.type === 'keydown' || evt.type === 'virtualdown' || evt.type === 'swipe') {
+      if (evt.repeat) return;
       const a = evt.action;
       if (['up', 'down', 'left', 'right'].includes(a)) {
         this._slide(a);

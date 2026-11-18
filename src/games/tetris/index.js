@@ -75,6 +75,9 @@ export default class TetroFluxGame {
     this.canHold = true;
     this.dropTimer = 0;
     this.lockDelay = 0;
+    this.dasDir = 0;
+    this.dasTimer = 0;
+    this.arrTimer = 0;
     this.linesClearedTotal = 0;
     this.particles = [];
     this.nextPiece = this._drawFromBag();
@@ -144,19 +147,28 @@ export default class TetroFluxGame {
     if (!this.current) return;
     if (evt.type === 'keydown' || evt.type === 'virtualdown' || evt.type === 'swipe') {
       const a = evt.action;
+      if (evt.repeat && ['action', 'up', 'secondary'].includes(a)) return;
+
       if (a === 'left') {
         if (!this._collides(this.current.matrix, this.current.x - 1, this.current.y)) {
           this.current.x--;
           this.api.audio.play('move');
         }
+        this.dasDir = -1;
+        this.dasTimer = 0;
+        this.arrTimer = 0;
       } else if (a === 'right') {
         if (!this._collides(this.current.matrix, this.current.x + 1, this.current.y)) {
           this.current.x++;
           this.api.audio.play('move');
         }
+        this.dasDir = 1;
+        this.dasTimer = 0;
+        this.arrTimer = 0;
       } else if (a === 'down') {
         if (!this._collides(this.current.matrix, this.current.x, this.current.y + 1)) {
           this.current.y++;
+          this.dropTimer = 0;
           this.api.addScore(1, false);
         }
       } else if (a === 'up') {
@@ -188,29 +200,61 @@ export default class TetroFluxGame {
 
   _holdCurrentPiece() {
     if (!this.canHold || !this.current) return;
-    this.api.audio.play('click');
     const baseTemplate = SHAPES.find((s) => s.id === this.current.id);
     if (!this.holdPiece) {
+      this.api.audio.play('click');
       this.holdPiece = baseTemplate;
       this._spawnNext();
+      this.canHold = false;
     } else {
       const prevHold = this.holdPiece;
+      const nextMat = prevHold.matrix.map((r) => [...r]);
+      const nextX = Math.floor((this.cols - nextMat[0].length) / 2);
+      if (this._collides(nextMat, nextX, 0)) {
+        return; // Evitar superposición si la parte superior está bloqueada
+      }
+      this.api.audio.play('click');
       this.holdPiece = baseTemplate;
       this.current = {
         ...prevHold,
-        matrix: prevHold.matrix.map((r) => [...r]),
-        x: Math.floor((this.cols - prevHold.matrix[0].length) / 2),
+        matrix: nextMat,
+        x: nextX,
         y: 0
       };
+      this.canHold = false;
     }
-    this.canHold = false;
   }
 
   update(dt) {
     updateAndDrawFXParticles(null, this.particles, dt, false);
     if (!this.current) return;
     const diff = this.api.getDifficulty();
-    const dropInterval = Math.max(0.11, 0.78 / diff.speedMultiplier);
+
+    // Auto-desplazamiento lateral suave (DAS / ARR) al mantener pulsado Izq o Der
+    const leftHeld = this.api.input.isPressed('left');
+    const rightHeld = this.api.input.isPressed('right');
+    const heldDir = leftHeld && !rightHeld ? -1 : rightHeld && !leftHeld ? 1 : 0;
+    if (heldDir !== 0 && heldDir === this.dasDir) {
+      this.dasTimer += dt;
+      if (this.dasTimer >= 0.16) {
+        this.arrTimer += dt;
+        if (this.arrTimer >= 0.045) {
+          this.arrTimer = 0;
+          if (!this._collides(this.current.matrix, this.current.x + heldDir, this.current.y)) {
+            this.current.x += heldDir;
+            this.api.audio.play('move');
+          }
+        }
+      }
+    } else {
+      this.dasDir = heldDir;
+      this.dasTimer = 0;
+      this.arrTimer = 0;
+    }
+
+    const softDrop = this.api.input.isPressed('down');
+    const baseInterval = Math.max(0.11, 0.78 / diff.speedMultiplier);
+    const dropInterval = softDrop ? Math.min(baseInterval, 0.048) : baseInterval;
 
     const onGround = this._collides(this.current.matrix, this.current.x, this.current.y + 1);
     if (onGround) {
@@ -228,6 +272,9 @@ export default class TetroFluxGame {
     if (this.dropTimer >= dropInterval) {
       this.dropTimer = 0;
       this.current.y++;
+      if (softDrop) {
+        this.api.addScore(1, false);
+      }
     }
   }
 

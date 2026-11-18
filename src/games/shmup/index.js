@@ -234,13 +234,19 @@ export default class VerticalShmupGame {
   }
 
   handleInput(evt) {
-    if (evt.type === 'pointermove' || (evt.type === 'pointerdown' && evt.rawY > 40)) {
-      if (evt.isDown !== false) {
+    if (evt.type === 'pointerdown' && evt.rawY > 40) {
+      if (evt.pointerType === 'mouse') {
         this.player.x = Math.max(22, Math.min(this.api.width - 22, evt.x * this.api.width));
         this.player.y = Math.max(60, Math.min(this.api.height - 26, evt.y * this.api.height));
       }
-      if (evt.type === 'pointerdown') {
-        this._firePlayer();
+      this._firePlayer();
+    } else if (evt.type === 'pointermove' && evt.isDown) {
+      if (evt.pointerType === 'touch' && typeof evt.dxNorm === 'number') {
+        this.player.x = Math.max(22, Math.min(this.api.width - 22, this.player.x + evt.dxNorm * this.api.width));
+        this.player.y = Math.max(60, Math.min(this.api.height - 26, this.player.y + evt.dyNorm * this.api.height));
+      } else {
+        this.player.x = Math.max(22, Math.min(this.api.width - 22, evt.x * this.api.width));
+        this.player.y = Math.max(60, Math.min(this.api.height - 26, evt.y * this.api.height));
       }
     } else if ((evt.type === 'keydown' || evt.type === 'virtualdown') && evt.action === 'secondary') {
       this._triggerNovaBomb();
@@ -399,18 +405,19 @@ export default class VerticalShmupGame {
       }
     }
 
-    // Movimiento por teclado / botones
-    let dx = 0;
-    let dy = 0;
+    // Movimiento por teclado / botones / joystick analógico
+    let dx = this.api.input.analog?.x || 0;
+    let dy = this.api.input.analog?.y || 0;
     if (this.api.input.isPressed('left')) dx -= 1;
     if (this.api.input.isPressed('right')) dx += 1;
     if (this.api.input.isPressed('up')) dy -= 1;
     if (this.api.input.isPressed('down')) dy += 1;
-    this.bankTilt += (dx * 0.14 - this.bankTilt) * Math.min(1, dt * 12);
+    this.bankTilt += (Math.max(-1, Math.min(1, dx)) * 0.14 - this.bankTilt) * Math.min(1, dt * 12);
     if (dx !== 0 || dy !== 0) {
-      const len = Math.hypot(dx, dy);
-      this.player.x = Math.max(22, Math.min(w - 22, this.player.x + (dx / len) * this.player.speed * dt));
-      this.player.y = Math.max(60, Math.min(h - 26, this.player.y + (dy / len) * this.player.speed * dt));
+      const mag = Math.hypot(dx, dy);
+      const scale = mag > 1 ? 1 / mag : 1;
+      this.player.x = Math.max(22, Math.min(w - 22, this.player.x + dx * scale * this.player.speed * dt));
+      this.player.y = Math.max(60, Math.min(h - 26, this.player.y + dy * scale * this.player.speed * dt));
     }
 
     // Auto-disparo continuo cómodo o con botón de acción

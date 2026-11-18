@@ -73,8 +73,8 @@ export default class SkyPulseGame {
         return;
       }
       this._flap();
-    } else if (evt.type === 'keydown' || evt.type === 'virtualdown') {
-      if (evt.action === 'action' || evt.action === 'up') {
+    } else if ((evt.type === 'keydown' || evt.type === 'virtualdown') && !evt.repeat) {
+      if (evt.action === 'action' || evt.action === 'up' || evt.action === 'jump') {
         this._flap();
       } else if (evt.action === 'secondary' || evt.code === 'KeyC') {
         this._cycleCharacter();

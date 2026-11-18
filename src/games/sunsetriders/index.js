@@ -317,10 +317,15 @@ export default class SunsetRidersGame {
   handleInput(evt) {
     const p = this.player;
     if (evt.type === 'keydown' || evt.type === 'virtualdown') {
-      if (evt.action === 'up' && p.grounded) {
-        p.vy = -525;
-        p.grounded = false;
-        this.api.audio.play('jump');
+      if ((evt.action === 'up' || evt.action === 'jump') && p.grounded) {
+        if (this.api.input.isPressed('down') && p.y + p.h < this.groundY - 4) {
+          p.y += 10;
+          p.grounded = false;
+        } else {
+          p.vy = -525;
+          p.grounded = false;
+          this.api.audio.play('jump');
+        }
       } else if ((evt.action === 'secondary' || evt.action === 'down') && p.grounded && p.slideCooldown <= 0) {
         p.slideTimer = 0.38;
         p.slideCooldown = 0.65;
