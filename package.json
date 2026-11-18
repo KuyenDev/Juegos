@@ -1,0 +1,14 @@
+{
+  "name": "arcade-infinito",
+  "version": "1.0.0",
+  "description": "ARCADE INFINITO — Plataforma Web Progresiva (PWA) de Minijuegos Clásicos 100% Offline",
+  "type": "module",
+  "scripts": {
+    "dev": "vite || python3 serve.py",
+    "start": "python3 serve.py",
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}
